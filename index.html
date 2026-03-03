@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interior POV Pro v3.1 - 兄 day 專屬工具</title>
+    <title>Interior POV Pro v4.0 - 兄 day 專業攝影增強版</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel CDN -->
@@ -18,6 +18,9 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* 增加一點 UI 動效 */
+        .glow-active { box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); border-color: #4f46e5; }
     </style>
 </head>
 <body class="bg-[#f1f5f9]">
@@ -26,7 +29,7 @@
     <script type="text/babel">
         const { useState, useRef, useEffect, useCallback } = React;
         
-        // 模擬 Lucide React 組件 (因為 CDN 載入方式不同)
+        // 模擬 Lucide React 組件
         const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
@@ -41,26 +44,26 @@
         };
 
         const STYLES = [
-            { id: 'modern', name: '現代極簡 (Modern)', prompt: 'Modern luxury interior, marble textures, recessed lighting, neutral tones, high-end furniture.' },
-            { id: 'muji', name: '無印風 (Muji)', prompt: 'Japanese minimalist style, light oak wood, white walls, clean lines, natural soft lighting.' },
-            { id: 'retro', name: '台式復古 (Retro)', prompt: 'Retro Taiwanese style, terrazzo flooring, floral sofa, warm wooden furniture, 1980s aesthetic.' },
-            { id: 'industrial', name: '工業風 (Industrial)', prompt: 'Industrial loft style, exposed brick walls, dark metal accents, leather furniture, concrete flooring.' },
+            { id: 'modern', name: '現代極簡 (Modern)', prompt: 'Modern luxury interior, marble textures, recessed lighting, neutral tones, high-end furniture, sleek surfaces.' },
+            { id: 'muji', name: '無印風 (Muji)', prompt: 'Japanese minimalist style, light oak wood, white walls, clean lines, natural soft lighting, zen atmosphere.' },
+            { id: 'retro', name: '台式復古 (Retro)', prompt: 'Retro Taiwanese style, terrazzo flooring, floral sofa, warm wooden furniture, 1980s aesthetic, nostalgic lighting.' },
+            { id: 'industrial', name: '工業風 (Industrial)', prompt: 'Industrial loft style, exposed brick walls, dark metal accents, leather furniture, concrete flooring, high ceilings.' },
             { id: 'custom', name: '✨ 自定義風格 (Custom)', prompt: '' }
         ];
 
-        const ROOMS = ["客廳 (Living Room)", "廚房 (Kitchen)", "主臥 (Master Bedroom)", "餐廳 (Dining Room)", "玄關 (Entrance)", "衛浴 (Bathroom)", "自定義空間 (Custom)"];
+        const ROOMS = ["客廳 (Living Room)", "廚房 (Kitchen)", "主臥 (Master Bedroom)", "餐廳 (Dining Room)", "玄關 (Entrance)", "衛浴 (Bathroom)", "書房 (Study Room)", "自定義空間 (Custom)"];
 
         const FOCAL_LENGTHS = [
-            { label: "14mm", value: "14mm ultra-wide lens", fov: 114 },
-            { label: "24mm", value: "24mm wide angle lens", fov: 84 },
-            { label: "35mm", value: "35mm standard lens", fov: 63 },
-            { label: "50mm", value: "50mm prime lens", fov: 46 }
+            { label: "14mm", value: "14mm ultra-wide lens", fov: 114, desc: "Ultra-wide angle, dramatic spatial depth, emphasizing the grand scale of the room" },
+            { label: "24mm", value: "24mm wide angle lens", fov: 84, desc: "Professional architectural wide view, balanced perspective" },
+            { label: "35mm", value: "35mm standard lens", fov: 63, desc: "Natural human eye perspective, storytelling composition" },
+            { label: "50mm", value: "50mm prime lens", fov: 46, desc: "Cinematic compression, focused detail, tight interior portrait" }
         ];
 
         const CAM_HEIGHTS = [
-            { label: "160cm (人眼)", value: "160cm (eye level)" },
-            { label: "100cm (腰部)", value: "100cm (waist level, magazine style)" },
-            { label: "30cm (低角)", value: "30cm (low angle)" }
+            { label: "160cm (人眼)", value: "160cm eye level", desc: "standard human eye-level view" },
+            { label: "100cm (腰部)", value: "100cm waist level", desc: "professional interior magazine style, straight vertical lines" },
+            { label: "30cm (低角)", value: "30cm low angle", desc: "dramatic low-angle view emphasizing ceiling height and scale" }
         ];
 
         const App = () => {
@@ -72,7 +75,6 @@
             const [selectedStyle, setSelectedStyle] = useState(STYLES[0]);
             const [styleLocked, setStyleLocked] = useState(false);
             const [selectedRoom, setSelectedRoom] = useState(ROOMS[0]);
-            const [mapType, setMapType] = useState("3D"); 
             const [taskType, setTaskType] = useState("POV");
             const [customStylePrompt, setCustomStylePrompt] = useState("");
             const [customRoomName, setCustomRoomName] = useState("");
@@ -90,8 +92,13 @@
                 const rect = interactionRef.current.getBoundingClientRect();
                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                 const y = ((e.clientY - rect.top) / rect.height) * 100;
-                if (editMode === "ANCHOR") { setAnchor({ x, y }); setEditMode("POV"); } 
-                else { setArrow({ start: { x, y }, end: { x, y } }); setIsDrawing(true); }
+                if (editMode === "ANCHOR") { 
+                    setAnchor({ x, y }); 
+                    setEditMode("POV"); 
+                } else { 
+                    setArrow({ start: { x, y }, end: { x, y } }); 
+                    setIsDrawing(true); 
+                }
             };
 
             const handleMouseMove = (e) => {
@@ -105,28 +112,84 @@
             const updatePrompt = useCallback(() => {
                 const finalStyle = selectedStyle.id === 'custom' ? customStylePrompt : selectedStyle.prompt;
                 const finalRoom = selectedRoom === '自定義空間 (Custom)' ? customRoomName : selectedRoom;
+
                 if (taskType === "TOPDOWN") {
-                    setPrompt(`[TASK: 3D TOP-DOWN VIEW]\nTransform this 2D floor plan into a professional 3D top-down perspective visualization. \nOrientation: North is at the top of the image.\nSpace Type: ${finalRoom || "Interior Space"}\nStyle: ${finalStyle || "High-quality architectural style"}\nVisuals: Realistic wall thickness, exact furniture placement.\nQuality: 8k resolution, photorealistic.`);
+                    setPrompt(`[TASK: 3D TOP-DOWN VIEW]\nTransform this 2D floor plan into a professional 3D top-down perspective visualization. \n[ORIENTATION]: North is at the top.\n[SPACE]: ${finalRoom || "Interior Space"}\n[STYLE]: ${finalStyle || "High-quality architectural style"}\n[VISUALS]: Realistic wall thickness, exact furniture placement, overhead lighting.\n[QUALITY]: 8k, photorealistic, clean architectural render.`);
                     return;
                 }
-                if (!arrow) { setPrompt("請標註相機 POV..."); return; }
+
+                if (!arrow) { 
+                    setPrompt("請在左側底圖標註相機位置與拍攝方向..."); 
+                    return; 
+                }
+
+                // 計算角度與方位
                 const dx = arrow.end.x - arrow.start.x;
                 const dy = arrow.end.y - arrow.start.y;
                 const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
-                let leftSide = "Left", rightSide = "Right";
-                if (angleDeg > -45 && angleDeg <= 45) { leftSide = "North (Top)"; rightSide = "South (Bottom)"; }
-                else if (angleDeg > 45 && angleDeg <= 135) { leftSide = "East (Right)"; rightSide = "West (Left)"; }
-                else if (angleDeg > 135 || angleDeg <= -135) { leftSide = "South (Bottom)"; rightSide = "North (Top)"; }
-                else { leftSide = "West (Left)"; rightSide = "East (Right)"; }
-                const anchorNote = anchor ? `[VISUAL FOCUS]: Object at map coordinate (${Math.round(anchor.x)}%, ${Math.round(anchor.y)}%).` : "";
-                setPrompt(`[TASK: INTERIOR PERSPECTIVE]\nGenerate photo of a ${finalRoom || "area"}.\nOrientation: N=Up, E=Right, S=Down, W=Left.\n[CAMERA]: Coordinate (${Math.round(arrow.start.x)}%, ${Math.round(arrow.start.y)}%), Lens ${focalLength.value}, Height ${camHeight.value}, Facing ${Math.round(angleDeg)}°.\n[PHYSICAL ALIGNMENT]: \n- The ${leftSide} must appear on the LEFT.\n- The ${rightSide} must appear on the RIGHT.\n${anchorNote}\n[STYLE]: ${finalStyle || "Professional"}\nVisuals: 8k photorealistic.`);
+                
+                // 決定攝影語言描述
+                let shotType = "";
+                const absAngle = Math.abs(angleDeg);
+                
+                // 判斷是否為對角線拍攝
+                if ((absAngle > 20 && absAngle < 70) || (absAngle > 110 && absAngle < 160)) {
+                    shotType = "Dynamic diagonal corner perspective";
+                } else {
+                    shotType = "Straight-on symmetrical composition";
+                }
+
+                // 判斷相機在房間的相對位置
+                const getSector = (x, y) => {
+                    let h = x < 33 ? "Left" : x > 66 ? "Right" : "Center";
+                    let v = y < 33 ? "Top" : y > 66 ? "Bottom" : "Middle";
+                    return `${v}-${h}`;
+                };
+                const camSector = getSector(arrow.start.x, arrow.start.y);
+
+                // 判斷前後景邏輯
+                let leftSide = "Left-side", rightSide = "Right-side";
+                if (angleDeg > -45 && angleDeg <= 45) { leftSide = "North-wall"; rightSide = "South-wall"; }
+                else if (angleDeg > 45 && angleDeg <= 135) { leftSide = "East-wall"; rightSide = "West-wall"; }
+                else if (angleDeg > 135 || angleDeg <= -135) { leftSide = "South-wall"; rightSide = "North-wall"; }
+                else { leftSide = "West-wall"; rightSide = "East-wall"; }
+
+                const anchorNote = anchor ? `[FOCUS POINT]: Sharp focus on the object located at coordinate (${Math.round(anchor.x)}%, ${Math.round(anchor.y)}%).` : "";
+
+                // 最終 Prompt 組裝 (v4.0 強化攝影語義版)
+                setPrompt(`[TASK: INTERIOR PHOTOGRAPHY]
+A high-end professional photo of the ${finalRoom}.
+
+[CAMERA SETUP]:
+- Position: Standing at the ${camSector} of the floor plan.
+- Lens: ${focalLength.value} (${focalLength.desc}).
+- Height: ${camHeight.value}, ${camHeight.desc}.
+- Angle: ${Math.round(angleDeg)} degrees, ${shotType}.
+
+[SPATIAL ALIGNMENT]: 
+- Foreground: Objects near map coordinate (${Math.round(arrow.start.x)}%, ${Math.round(arrow.start.y)}%) should appear at the bottom edge of the photo.
+- Perspective: The camera looks toward (${Math.round(arrow.end.x)}%, ${Math.round(arrow.end.y)}%).
+- Layout: Ensure the ${leftSide} appears on the LEFT of the frame and the ${rightSide} appears on the RIGHT.
+${anchorNote}
+
+[STYLE & RENDERING]:
+- Style: ${finalStyle}
+- Lighting: Professional interior lighting, soft shadows, natural light from windows.
+- Quality: 8k resolution, Architectural Digest photography style, hyper-realistic textures.`);
             }, [arrow, anchor, selectedStyle, customStylePrompt, selectedRoom, customRoomName, taskType, focalLength, camHeight]);
 
             useEffect(() => { updatePrompt(); }, [updatePrompt]);
 
             const copyToClipboard = () => {
-                const el = document.createElement('textarea'); el.value = prompt; document.body.appendChild(el); el.select();
-                try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch(e) {}
+                const el = document.createElement('textarea'); 
+                el.value = prompt; 
+                document.body.appendChild(el); 
+                el.select();
+                try { 
+                    document.execCommand('copy'); 
+                    setCopied(true); 
+                    setTimeout(() => setCopied(false), 2000); 
+                } catch(e) {}
                 document.body.removeChild(el);
             };
 
@@ -143,20 +206,27 @@
             };
 
             return (
-                <div className="min-h-screen p-4 md:p-6">
-                    <div className="max-w-[1550px] mx-auto">
-                        <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-xl shadow-slate-200">
-                                    <Icon name="Compass" />
+                <div className="min-h-screen p-4 md:p-6 lg:p-10">
+                    <div className="max-w-[1600px] mx-auto">
+                        {/* Header */}
+                        <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex items-center gap-5">
+                                <div className="bg-indigo-600 p-4 rounded-3xl text-white shadow-2xl shadow-indigo-200">
+                                    <Icon name="Compass" size={32} />
                                 </div>
                                 <div>
-                                    <h1 className="text-2xl font-black text-slate-900 italic">Interior POV Pro <span className="text-sm font-bold bg-indigo-600 text-white px-3 py-1 rounded-full ml-2 uppercase">v3.1 Final</span></h1>
-                                    <p className="text-sm text-slate-500">兄 day：GitHub 穩定版 — 實體對位與自定義空間系統</p>
+                                    <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">
+                                        Interior POV Pro 
+                                        <span className="text-xs font-black bg-slate-900 text-white px-3 py-1.5 rounded-full ml-3 uppercase tracking-tighter not-italic">v4.0 Photo Engine</span>
+                                    </h1>
+                                    <p className="text-sm text-slate-500 font-medium">兄 day：攝影語義增強 — 從幾何點位進化為專業構圖指令</p>
                                 </div>
                             </div>
-                            <button onClick={() => fileInputRef.current.click()} className="bg-white border-2 border-slate-200 hover:border-slate-900 px-8 py-3 rounded-2xl font-black text-sm transition-all flex items-center gap-2">
-                                <Icon name="Upload" size={18} /> 上傳底圖
+                            <button 
+                                onClick={() => fileInputRef.current.click()} 
+                                className="bg-white border-2 border-slate-200 hover:border-indigo-600 hover:text-indigo-600 px-10 py-4 rounded-2xl font-black text-sm transition-all flex items-center gap-3 shadow-sm active:scale-95"
+                            >
+                                <Icon name="Upload" size={20} /> 上傳平面底圖
                             </button>
                             <input type="file" ref={fileInputRef} onChange={(e) => {
                                 const file = e.target.files[0];
@@ -168,103 +238,179 @@
                             }} className="hidden" accept="image/*" />
                         </header>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                            <div className="lg:col-span-3 space-y-4">
-                                <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                            {/* Left Panel: Settings */}
+                            <div className="lg:col-span-3 space-y-6">
+                                <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200 space-y-8">
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block text-center">Step 1: 定義任務</label>
-                                        <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-2xl">
-                                            <button onClick={() => {setTaskType("TOPDOWN"); clearMarkers();}} className={`py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 ${taskType === "TOPDOWN" ? "bg-slate-900 text-white shadow-lg" : "text-slate-500"}`}><Icon name="Box" size={16}/> 生俯瞰</button>
-                                            <button onClick={() => setTaskType("POV")} className={`py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 ${taskType === "POV" ? "bg-slate-900 text-white shadow-lg" : "text-slate-500"}`}><Icon name="Camera" size={16}/> 生透視</button>
+                                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block text-center">Step 1: 任務類型</label>
+                                        <div className="grid grid-cols-2 gap-3 p-2 bg-slate-100 rounded-2xl">
+                                            <button onClick={() => {setTaskType("TOPDOWN"); clearMarkers();}} className={`py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${taskType === "TOPDOWN" ? "bg-slate-900 text-white shadow-lg scale-[1.02]" : "text-slate-500 hover:bg-slate-200"}`}><Icon name="Box" size={16}/> 生俯瞰</button>
+                                            <button onClick={() => setTaskType("POV")} className={`py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${taskType === "POV" ? "bg-slate-900 text-white shadow-lg scale-[1.02]" : "text-slate-500 hover:bg-slate-200"}`}><Icon name="Camera" size={16}/> 生透視</button>
                                         </div>
                                     </div>
 
-                                    <div className={`p-4 rounded-2xl border-2 transition-all ${styleLocked ? "bg-slate-900 text-white border-slate-900" : "bg-white border-indigo-100"}`}>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <label className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <div className={`p-5 rounded-3xl border-2 transition-all duration-500 ${styleLocked ? "bg-slate-900 text-white border-slate-900" : "bg-white border-indigo-100"}`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <label className="text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
                                                 <Icon name={styleLocked ? "Lock" : "Unlock"} size={14}/> 樣式鎖定
                                             </label>
-                                            <button onClick={() => setStyleLocked(!styleLocked)} className={`px-2 py-1 rounded-lg text-[10px] font-bold ${styleLocked ? "bg-white/10" : "bg-slate-900 text-white"}`}>
+                                            <button onClick={() => setStyleLocked(!styleLocked)} className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${styleLocked ? "bg-white/20 hover:bg-white/30" : "bg-slate-900 text-white"}`}>
                                                 {styleLocked ? "解鎖" : "鎖定"}
                                             </button>
                                         </div>
-                                        <select disabled={styleLocked} value={selectedStyle.id} onChange={(e) => setSelectedStyle(STYLES.find(s => s.id === e.target.value))} className="w-full p-2 text-xs font-bold bg-slate-50 rounded-lg outline-none">
+                                        <select disabled={styleLocked} value={selectedStyle.id} onChange={(e) => setSelectedStyle(STYLES.find(s => s.id === e.target.value))} className="w-full p-3 text-xs font-bold bg-slate-50 rounded-xl outline-none text-slate-900">
                                             {STYLES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                         </select>
                                         {selectedStyle.id === 'custom' && (
-                                            <textarea value={customStylePrompt} onChange={(e) => setCustomStylePrompt(e.target.value)} placeholder="自定義風格咒語..." className="w-full mt-3 p-2 text-[10px] rounded-lg border h-20 text-slate-800" />
+                                            <textarea value={customStylePrompt} onChange={(e) => setCustomStylePrompt(e.target.value)} placeholder="請輸入自定義風格咒語..." className="w-full mt-4 p-3 text-xs rounded-xl border-0 bg-slate-50 h-24 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500" />
                                         )}
                                     </div>
 
                                     {taskType === "POV" && (
-                                        <div className="space-y-6">
+                                        <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
                                             <div>
-                                                <label className="text-[10px] font-black text-slate-400 mb-2 block uppercase">渲染區域</label>
-                                                <select value={selectedRoom} onChange={(e) => setSelectedRoom(e.target.value)} className="w-full p-2.5 rounded-xl border text-xs font-bold outline-none">
+                                                <label className="text-[11px] font-black text-slate-400 mb-3 block uppercase tracking-widest text-center">攝影參數</label>
+                                                <div className="space-y-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <span className="text-[10px] font-bold text-slate-400 ml-1">鏡頭焦距 (LENS)</span>
+                                                        <div className="grid grid-cols-4 gap-2">
+                                                            {FOCAL_LENGTHS.map(f => (
+                                                                <button key={f.label} onClick={() => setFocalLength(f)} className={`py-2 rounded-lg text-[10px] font-black border-2 transition-all ${focalLength.label === f.label ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"}`}>{f.label}</button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <span className="text-[10px] font-bold text-slate-400 ml-1">拍攝高度 (HEIGHT)</span>
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            {CAM_HEIGHTS.map(h => (
+                                                                <button key={h.label} onClick={() => setCamHeight(h)} className={`py-2.5 px-4 rounded-xl text-[10px] font-black border-2 text-left flex justify-between items-center transition-all ${camHeight.label === h.label ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"}`}>
+                                                                    {h.label}
+                                                                    {camHeight.label === h.label && <Icon name="Check" size={14} />}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-[11px] font-black text-slate-400 mb-3 block uppercase tracking-widest text-center">渲染區域</label>
+                                                <select value={selectedRoom} onChange={(e) => setSelectedRoom(e.target.value)} className="w-full p-3.5 rounded-2xl border-2 border-slate-100 text-xs font-bold outline-none focus:border-indigo-600 transition-all">
                                                     {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
                                                 </select>
                                                 {selectedRoom === '自定義空間 (Custom)' && (
-                                                    <input value={customRoomName} onChange={(e) => setCustomRoomName(e.target.value)} placeholder="例如：手術室..." className="w-full mt-2 p-2 text-xs border rounded-lg" />
+                                                    <input value={customRoomName} onChange={(e) => setCustomRoomName(e.target.value)} placeholder="例如：手術室、機艙..." className="w-full mt-3 p-3 text-xs border-2 border-slate-100 rounded-xl outline-none focus:border-indigo-600 transition-all" />
                                                 )}
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-                                                <button onClick={() => setEditMode("POV")} className={`py-2 rounded-lg text-xs font-bold ${editMode === "POV" ? "bg-white shadow-sm" : "text-slate-500"}`}>視角</button>
-                                                <button onClick={() => setEditMode("ANCHOR")} className={`py-2 rounded-lg text-xs font-bold ${editMode === "ANCHOR" ? "bg-white shadow-sm" : "text-slate-500"}`}>錨點</button>
+                                            
+                                            <div className="grid grid-cols-2 gap-3 p-2 bg-indigo-50 rounded-2xl border-2 border-indigo-100">
+                                                <button onClick={() => setEditMode("POV")} className={`py-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${editMode === "POV" ? "bg-indigo-600 text-white shadow-md" : "text-indigo-400 hover:bg-indigo-100"}`}><Icon name="MousePointer2" size={14}/> 畫視角</button>
+                                                <button onClick={() => setEditMode("ANCHOR")} className={`py-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${editMode === "ANCHOR" ? "bg-amber-500 text-white shadow-md" : "text-amber-500 hover:bg-amber-100"}`}><Icon name="Target" size={14}/> 設錨點</button>
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
+                            {/* Center Panel: Interaction Map */}
                             <div className="lg:col-span-6 space-y-4">
-                                <div className="bg-white p-5 rounded-[3.5rem] shadow-xl border border-white overflow-hidden relative group">
-                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[12px] font-black text-slate-400 opacity-60 bg-white/50 px-2 rounded-full z-10">N</div>
-                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[12px] font-black text-slate-400 opacity-60 bg-white/50 px-2 rounded-full z-10">S</div>
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[12px] font-black text-slate-400 opacity-60 bg-white/50 px-2 rounded-full z-10">W</div>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-black text-slate-400 opacity-60 bg-white/50 px-2 rounded-full z-10">E</div>
+                                <div className="bg-white p-6 rounded-[4rem] shadow-2xl border-4 border-white overflow-hidden relative group">
+                                    {/* Compass Indicators */}
+                                    <div className="absolute top-6 left-1/2 -translate-x-1/2 text-[12px] font-black text-slate-300 tracking-[0.5em] bg-white/80 px-4 py-1 rounded-full z-10 border border-slate-100">NORTH</div>
+                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[12px] font-black text-slate-300 tracking-[0.5em] bg-white/80 px-4 py-1 rounded-full z-10 border border-slate-100">SOUTH</div>
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[12px] font-black text-slate-300 tracking-[0.5em] bg-white/80 px-4 py-1 rounded-full z-10 border border-slate-100">WEST</div>
+                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 rotate-90 text-[12px] font-black text-slate-300 tracking-[0.5em] bg-white/80 px-4 py-1 rounded-full z-10 border border-slate-100">EAST</div>
 
-                                    <div ref={interactionRef} onMouseDown={handleCanvasInteraction} onMouseMove={handleMouseMove} onMouseUp={() => setIsDrawing(false)} onMouseLeave={() => setIsDrawing(false)} className={`relative w-full aspect-square bg-slate-100 rounded-[2.8rem] border border-slate-200 overflow-hidden ${image && taskType === 'POV' ? 'cursor-crosshair' : 'cursor-default'}`}>
+                                    <div 
+                                        ref={interactionRef} 
+                                        onMouseDown={handleCanvasInteraction} 
+                                        onMouseMove={handleMouseMove} 
+                                        onMouseUp={() => setIsDrawing(false)} 
+                                        onMouseLeave={() => setIsDrawing(false)} 
+                                        className={`relative w-full aspect-square bg-slate-50 rounded-[3.2rem] border-2 border-dashed border-slate-200 overflow-hidden transition-all ${image && taskType === 'POV' ? 'cursor-crosshair ring-offset-4' : 'cursor-default'}`}
+                                    >
                                         {image ? (
                                             <>
-                                                <img src={image} className="w-full h-full object-contain select-none pointer-events-none opacity-95" />
+                                                <img src={image} className="w-full h-full object-contain select-none pointer-events-none opacity-90" />
                                                 <svg className="absolute inset-0 w-full h-full pointer-events-none drop-shadow-2xl overflow-visible">
                                                     {arrow && taskType === "POV" && (
                                                         <g>
-                                                            <path d={getViewConePath()} fill="rgba(79, 70, 229, 0.1)" stroke="rgba(79, 70, 229, 0.3)" strokeWidth="1" strokeDasharray="4,2" />
-                                                            <line x1={`${arrow.start.x}%`} y1={`${arrow.start.y}%`} x2={`${arrow.end.x}%`} y2={`${arrow.end.y}%`} stroke="#4f46e5" strokeWidth="5" strokeLinecap="round" />
-                                                            <circle cx={`${arrow.start.x}%`} cy={`${arrow.start.y}%`} r="10" fill="#4f46e5" stroke="white" strokeWidth="4" />
+                                                            <path d={getViewConePath()} fill="rgba(79, 70, 229, 0.15)" stroke="rgba(79, 70, 229, 0.4)" strokeWidth="1.5" strokeDasharray="6,3" className="animate-pulse" />
+                                                            <line x1={`${arrow.start.x}%`} y1={`${arrow.start.y}%`} x2={`${arrow.end.x}%`} y2={`${arrow.end.y}%`} stroke="#4f46e5" strokeWidth="6" strokeLinecap="round" />
+                                                            <circle cx={`${arrow.start.x}%`} cy={`${arrow.start.y}%`} r="12" fill="#4f46e5" stroke="white" strokeWidth="4" shadow="lg" />
+                                                            {/* 箭頭頭部 */}
+                                                            <circle cx={`${arrow.end.x}%`} cy={`${arrow.end.y}%`} r="4" fill="#4f46e5" />
                                                         </g>
                                                     )}
                                                     {anchor && taskType === "POV" && (
                                                         <g transform={`translate(${anchor.x}, ${anchor.y})`}>
-                                                            <circle cx="0" cy="0" r="10" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,3" />
-                                                            <polygon points="0,-10 3,-3 10,-3 4,2 6,10 0,5 -6,10 -4,2 -10,-3 -3,-3" fill="#f59e0b" stroke="#fff" strokeWidth="1" transform="scale(0.8)" />
+                                                            <circle cx="0" cy="0" r="14" fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray="6,4" />
+                                                            <circle cx="0" cy="0" r="4" fill="#f59e0b" stroke="white" strokeWidth="2" />
                                                         </g>
                                                     )}
                                                 </svg>
                                             </>
                                         ) : (
-                                            <div className="flex flex-col items-center justify-center h-full text-slate-300">上傳底圖開始作業</div>
+                                            <div className="flex flex-col items-center justify-center h-full text-slate-300 bg-slate-50/50">
+                                                <Icon name="Image" size={48} className="mb-4 opacity-20" />
+                                                <p className="font-black text-sm uppercase tracking-widest opacity-40">請上傳平面底圖開始作業</p>
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="absolute top-10 left-10 flex gap-2">
-                                        <span className={`text-white text-[10px] font-black px-5 py-2.5 rounded-full uppercase tracking-widest ${taskType === 'TOPDOWN' ? 'bg-emerald-600' : 'bg-slate-900'}`}>{taskType} ACTIVE</span>
-                                        {(arrow || anchor) && <button onClick={clearMarkers} className="bg-white text-rose-500 p-2 rounded-full shadow-lg">X</button>}
+
+                                    {/* Task HUD */}
+                                    <div className="absolute top-10 left-10 flex items-center gap-3">
+                                        <div className={`px-6 py-3 rounded-2xl shadow-xl border-2 flex items-center gap-3 transition-all ${taskType === 'TOPDOWN' ? 'bg-emerald-600 border-emerald-400' : 'bg-slate-900 border-slate-700'}`}>
+                                            <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                                            <span className="text-white text-[11px] font-black uppercase tracking-[0.2em]">{taskType} ENGINE ACTIVE</span>
+                                        </div>
+                                        {(arrow || anchor) && (
+                                            <button onClick={clearMarkers} className="bg-white text-rose-500 hover:bg-rose-500 hover:text-white p-3 rounded-2xl shadow-xl border-2 border-slate-100 transition-all active:scale-90">
+                                                <Icon name="RotateCcw" size={18} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Right Panel: Output Prompt */}
                             <div className="lg:col-span-3 space-y-4">
-                                <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl h-full flex flex-col">
-                                    <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-6">
-                                        <h2 className="font-black text-[10px] uppercase tracking-[0.3em] text-indigo-400 flex items-center gap-2"><Icon name="Wand2" size={18}/> Firefly 指令</h2>
-                                        <button onClick={copyToClipboard} className={`px-4 py-2 rounded-xl text-[10px] font-black ${copied ? 'bg-emerald-500' : 'bg-slate-800'} transition-all`}>{copied ? "已複製" : "COPY"}</button>
+                                <div className="bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl h-full flex flex-col border border-slate-800">
+                                    <div className="flex items-center justify-between mb-10 border-b border-white/10 pb-8">
+                                        <div>
+                                            <h2 className="font-black text-[12px] uppercase tracking-[0.4em] text-indigo-400 mb-1">Generated Prompt</h2>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Firefly / Midjourney Ready</p>
+                                        </div>
+                                        <button 
+                                            onClick={copyToClipboard} 
+                                            className={`px-6 py-3 rounded-2xl text-[11px] font-black transition-all active:scale-95 ${copied ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900 hover:bg-indigo-400 hover:text-white'}`}
+                                        >
+                                            {copied ? "COPIED!" : "COPY"}
+                                        </button>
                                     </div>
-                                    <div className="flex-grow bg-white/[0.03] rounded-3xl p-6 font-mono text-[10px] leading-relaxed text-slate-300 overflow-y-auto select-all">{prompt}</div>
+                                    <div className="flex-grow bg-white/[0.04] rounded-[2.5rem] p-8 font-mono text-[11px] leading-[1.8] text-slate-300 overflow-y-auto select-all custom-scrollbar border border-white/[0.05]">
+                                        {prompt.split('\n').map((line, i) => (
+                                            <div key={i} className={line.startsWith('[') ? "text-indigo-400 font-black mt-2 first:mt-0 mb-1 uppercase tracking-wider" : "mb-1"}>
+                                                {line}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-8 pt-8 border-t border-white/10">
+                                        <div className="flex items-center gap-3 text-slate-500">
+                                            <Icon name="Zap" size={14} className="text-amber-500" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Tip: 使用 Structure Reference 功能效果更佳</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Footer Info */}
+                    <footer className="mt-12 text-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">Design for Professional Interior Workflow</p>
+                    </footer>
                 </div>
             );
         };
